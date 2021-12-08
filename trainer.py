@@ -12,7 +12,6 @@ if args.handle_gpu:
 batch_size = 32
 epochs = 150
 load_weights = False
-with_voc_2012 = True
 backbone = args.backbone
 io_utils.is_valid_backbone(backbone)
 #
@@ -23,20 +22,17 @@ else:
 #
 hyper_params = train_utils.get_hyper_params(backbone)
 #
-train_data, info = data_utils.get_dataset("voc/2007", "train+validation")
-val_data, _ = data_utils.get_dataset("voc/2007", "test")
+train_data, info = data_utils.get_dataset("my_dataset", "train+validation")
+val_data, _ = data_utils.get_dataset("my_dataset", "test")
 train_total_items = data_utils.get_total_item_size(info, "train+validation")
 val_total_items = data_utils.get_total_item_size(info, "test")
 
-if with_voc_2012:
-    voc_2012_data, voc_2012_info = data_utils.get_dataset("voc/2012", "train+validation")
-    voc_2012_total_items = data_utils.get_total_item_size(voc_2012_info, "train+validation")
-    train_total_items += voc_2012_total_items
-    train_data = train_data.concatenate(voc_2012_data)
 
 labels = data_utils.get_labels(info)
+ages = data_utils.get_ages(info)
 labels = ["bg"] + labels
 hyper_params["total_labels"] = len(labels)
+hyper_params["total_ages"] = len(ages)
 img_size = hyper_params["img_size"]
 
 train_data = train_data.map(lambda x : data_utils.preprocessing(x, img_size, img_size, augmentation.apply))

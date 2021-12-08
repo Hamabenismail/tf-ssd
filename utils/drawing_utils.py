@@ -42,17 +42,20 @@ def draw_bboxes(imgs, bboxes):
         plt.imshow(img_with_bb)
         plt.show()
 
-def draw_bboxes_with_labels(img, bboxes, label_indices, probs, labels):
+def draw_bboxes_with_labels(img, bboxes, label_indices, age_indices, probs, labels, ages):
     """Drawing bounding boxes with labels on given image.
     inputs:
         img = (height, width, channels)
         bboxes = (total_bboxes, [y1, x1, y2, x2])
             in denormalized form
         label_indices = (total_bboxes)
+        ages_indices = (total_bboxes)
         probs = (total_bboxes)
         labels = [labels string list]
+        ages = [ages string list]
     """
     colors = tf.random.uniform((len(labels), 4), maxval=256, dtype=tf.int32)
+    colors_1 = tf.random.uniform((len(ages), 4), maxval=256, dtype=tf.int32)
     image = tf.keras.preprocessing.image.array_to_img(img)
     width, height = image.size
     draw = ImageDraw.Draw(image)
@@ -63,22 +66,26 @@ def draw_bboxes_with_labels(img, bboxes, label_indices, probs, labels):
         if width <= 0 or height <= 0:
             continue
         label_index = int(label_indices[index])
+        age_index = int(age_indices[index])
         color = tuple(colors[label_index].numpy())
+        color_1 = tuple(colors_1[age_index].numpy())
         label_text = "{0} {1:0.3f}".format(labels[label_index], probs[index])
+        age_text = "{0} {1:0.3f}".format(ages[age_index], probs[index])
         draw.text((x1 + 4, y1 + 2), label_text, fill=color)
+        draw.text((x1 + 4, y1 + 4), age_text, fill=color_1)
         draw.rectangle((x1, y1, x2, y2), outline=color, width=3)
     #
     plt.figure()
     plt.imshow(image)
     plt.show()
 
-def draw_predictions(dataset, pred_bboxes, pred_labels, pred_scores, labels, batch_size):
+def draw_predictions(dataset, pred_bboxes, pred_labels, pred_ages, pred_scores, labels, ages, batch_size):
     for batch_id, image_data in enumerate(dataset):
         imgs, _, _ = image_data
         img_size = imgs.shape[1]
         start = batch_id * batch_size
         end = start + batch_size
-        batch_bboxes, batch_labels, batch_scores = pred_bboxes[start:end], pred_labels[start:end], pred_scores[start:end]
+        batch_bboxes, batch_labels, batch_ages, batch_scores = pred_bboxes[start:end], pred_labels[start:end], pred_ages[start:end], pred_scores[start:end]
         for i, img in enumerate(imgs):
             denormalized_bboxes = bbox_utils.denormalize_bboxes(batch_bboxes[i], img_size, img_size)
-            draw_bboxes_with_labels(img, denormalized_bboxes, batch_labels[i], batch_scores[i], labels)
+            draw_bboxes_with_labels(img, denormalized_bboxes, batch_labels[i], batch_ages[i], batch_scores[i], labels, ages)

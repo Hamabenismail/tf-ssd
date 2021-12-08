@@ -3,6 +3,7 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 from PIL import Image
 import numpy as np
+import my.project.datasets.my_dataset  # Register `my_dataset`
 
 def preprocessing(image_data, final_height, final_width, augmentation_fn=None, evaluate=False):
     """Image resizing operation handled before batch operations.
@@ -15,21 +16,24 @@ def preprocessing(image_data, final_height, final_width, augmentation_fn=None, e
         img = (final_height, final_width, channels)
         gt_boxes = (gt_box_size, [y1, x1, y2, x2])
         gt_labels = (gt_box_size)
+        gt_ages = (gt_box_size)
     """
     img = image_data["image"]
     gt_boxes = image_data["objects"]["bbox"]
     gt_labels = tf.cast(image_data["objects"]["label"] + 1, tf.int32)
+    gt_ages = tf.cast(image_data["objects"]["age"] + 1, tf.int32)
     img = tf.image.convert_image_dtype(img, tf.float32)
     img = tf.image.resize(img, (final_height, final_width))
     if evaluate:
         not_diff = tf.logical_not(image_data["objects"]["is_difficult"])
         gt_boxes = gt_boxes[not_diff]
         gt_labels = gt_labels[not_diff]
+        gt_ages = gt_ages[not_diff]
     if augmentation_fn:
         img, gt_boxes = augmentation_fn(img, gt_boxes)
-    return img, gt_boxes, gt_labels
+    return img, gt_boxes, gt_labels, gt_ages
 
-def get_dataset(name, split, data_dir="~/tensorflow_datasets"):
+def get_dataset(name, split, data_dir="~/tensorflow_datasets/my_dataset/"):
     """Get tensorflow dataset split and info.
     inputs:
         name = name of the dataset, voc/2007, voc/2012, etc.
@@ -68,6 +72,16 @@ def get_labels(info):
     """
     return info.features["labels"].names
 
+def get_ages(info):
+    """Get label names list.
+    inputs:
+        info = tensorflow dataset info
+
+    outputs:
+        ages = [ages list]
+    """
+    return info.features["ages"].names
+
 def get_custom_imgs(custom_image_path):
     """Generating a list of images for given path.
     inputs:
@@ -92,31 +106,33 @@ def custom_data_generator(img_paths, final_height, final_width):
         img = (final_height, final_width, depth)
         dummy_gt_boxes = (None, None)
         dummy_gt_labels = (None, )
+        dummy_gt_ages = (None, )
     """
     for img_path in img_paths:
         image = Image.open(img_path)
         resized_image = image.resize((final_width, final_height), Image.LANCZOS)
         img = np.array(resized_image)
         img = tf.image.convert_image_dtype(img, tf.float32)
-        yield img, tf.constant([[]], dtype=tf.float32), tf.constant([], dtype=tf.int32)
+        yield img, tf.constant([[]], dtype=tf.float32), tf.constant([], dtype=tf.int32), tf.constant([], dtype=tf.int32)
 
 def get_data_types():
     """Generating data types for tensorflow datasets.
     outputs:
-        data types = output data types for (images, ground truth boxes, ground truth labels)
+        data types = output data types for (images, ground truth boxes, ground truth labels, ground truth ages)
     """
-    return (tf.float32, tf.float32, tf.int32)
+    return (tf.float32, tf.float32, tf.int32, tf.int32)
 
 def get_data_shapes():
     """Generating data shapes for tensorflow datasets.
     outputs:
-        data shapes = output data shapes for (images, ground truth boxes, ground truth labels)
+        data shapes = output data shapes for (images, ground truth boxes, ground truth labels, ground truth ages)
     """
-    return ([None, None, None], [None, None], [None,])
+    return ([None, None, None], [None, None], [None,], [None,])
 
 def get_padding_values():
     """Generating padding values for missing values in batch for tensorflow datasets.
     outputs:
-        padding values = padding values with dtypes for (images, ground truth boxes, ground truth labels)
+        padding values = padding values with dtypes for (images, ground truth boxes, ground truth labels, ground truth ages)
     """
-    return (tf.constant(0, tf.float32), tf.constant(0, tf.float32), tf.constant(-1, tf.int32))
+    return (tf.constant(0, tf.float32), tf.constant(0, tf.float32), tf.constant(-1, tf.int32), tf.constant(-1, tf.int32))
+
