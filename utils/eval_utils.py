@@ -9,6 +9,7 @@ def init_stats(labels):
             continue
         stats[i] = {
             "label": label,
+            "age": age[i]
             "total": 0,
             "tp": [],
             "fp": [],
